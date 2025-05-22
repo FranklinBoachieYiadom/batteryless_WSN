@@ -1,87 +1,106 @@
-# simulation.py
-# Main logic for running the simulation
+
 import random
+import csv
 from config import *
-from utils import  plot_network_with_path
+from utils import plot_all_paths_with_energies
 from network import Network
 
-def run_single_transmission():
-    """
-    Simulates a single transmission from a random node to the sink node.
-    Logs failed paths, energy levels, and time taken for successful transmission.
-    Visualizes the network and the transmission path.
-    """
-    # Initialize the network
+
+def generate_fixed_network(seed=42):
+    random.seed(seed)
     net = Network()
-    transmission_path = []  # To store the path of the first successful transmission
-    failed_paths = []       # To store paths that failed
-    energy_log = {}         # To log energy levels of nodes in paths
+    return net
 
-    # Select a random starting node (not the sink)
-    start_node = random.choice(net.nodes)
-    while start_node == net.sink:  # Ensure the starting node is not the sink
-        start_node = random.choice(net.nodes)
-    print(f"Starting transmission from Node {start_node.id}")
+def get_farthest_node(net):
+    sink = net.sink
+    farthest_node = max(net.nodes, key=lambda n: n.distance_to(sink))
+    return farthest_node
 
-    for step in range(SIMULATION_STEPS):
-        # Step 1: Harvest energy for all nodes
+def run_multi_phase_transmissions(phases=10, seed=42):
+    # 1. Generate network with fixed seed
+    net = generate_fixed_network(seed)
+    # 2. Select the farthest node from the sink
+    start_node = get_farthest_node(net)
+    print(f"Selected farthest node: {start_node.id}")
+
+    # 3. Prepare logging
+    all_phase_logs = []
+
+    for phase in range(1, phases + 1):
+        print(f"\n--- Phase {phase} ---")
+        # Harvest energy for all nodes before each phase
         for node in net.nodes:
             node.harvest_energy()
+        net.sink.harvest_energy()
 
-        # Step 2: Attempt transmission from the starting node
-        if start_node.can_transmit():
-            # Select neighbors that are closer to the sink and have enough energy
+       # Prepare phase log
+        phase_log = {
+            "phase": phase,
+            "start_node": start_node.id,
+            "start_energy": round(start_node.energy, 2),
+            "path": [],
+            "hops": []
+        }
+
+        # Transmission logic
+        current_node = start_node
+        path = [current_node.id]
+        hops_log = []
+
+        while current_node != net.sink:
+            # Find valid neighbors
             valid_neighbors = [
-                n for n in start_node.neighbors
-                if n.energy >= ENERGY_THRESHOLD and n.distance_to(net.sink) < start_node.distance_to(net.sink) 
+                n for n in current_node.neighbors
+                if n.energy >= ENERGY_THRESHOLD and n.distance_to(net.sink) < current_node.distance_to(net.sink)
             ]
-            print(f"Valid neighbors for Node {start_node.id}: {[n.id for n in valid_neighbors]}")
-            if valid_neighbors:
-                # If the sink is a valid neighbor, transmit directly to the sink
-                sink_neighbor = next((n for n in valid_neighbors if n == net.sink), None)
-                if sink_neighbor:
-                    best = net.sink
-                else:
-                    # Otherwise, choose the neighbor with the highest energy
-                    best = sorted(valid_neighbors, key=lambda n: n.energy, reverse=True)[0]
-                start_node.transmit(best)
-                transmission_path.append(start_node.id)  # Log the current node in the path
+            # Log valid neighbors and their energies
+            neighbors_info = [(n.id, round(n.energy, 2)) for n in valid_neighbors]
+            hops_log.append({
+                "node": current_node.id,
+                "valid_neighbors": neighbors_info,
+                "energy": round(current_node.energy, 2)
+            })
 
-                # Log energy levels of nodes in the path
-                energy_log[start_node.id] = start_node.energy
+            if not valid_neighbors:
+                break  # No path to sink
 
-                # Check if the sink is reached
-                if best == net.sink:
-                    transmission_path.append(best.id)
-                    energy_log[best.id] = best.energy
-                    print(f"Transmission Path: {transmission_path}")
-                    print(f"Energy Levels: {energy_log}")
-                    print(f"Time Taken: {step + 1} steps")
-                    
-                    plot_network_with_path(net, transmission_path)  # Visualize the network and path
-                    return
-                else:
-                    # Update the starting node to the next node in the path
-                    start_node = best
+            # Prefer direct transmission to sink if possible
+            sink_neighbor = next((n for n in valid_neighbors if n == net.sink), None)
+            if sink_neighbor:
+                next_node = net.sink
             else:
-                # Log the failed path and energy levels
-                failed_paths.append(transmission_path + [start_node.id])
-                energy_log[start_node.id] = start_node.energy
-                print(f"Failed Path: {transmission_path + [start_node.id]}")
-                print(f"Energy Levels: {energy_log}")
+                # Otherwise, pick neighbor with highest energy
+                next_node = max(valid_neighbors, key=lambda n: n.energy)
 
-                # No valid neighbors, increment retry count and wait time
-                start_node.retry_count += 1
-                start_node.wait_time += 1
-        else:
-            # Log the failed path if the starting node cannot transmit
-            failed_paths.append(transmission_path + [start_node.id])
-            energy_log[start_node.id] = start_node.energy
-            print(f"Failed Path: {transmission_path + [start_node.id]}")
-            print(f"Energy Levels: {energy_log}")
+            # Transmit and update energy
+            current_node.transmit(next_node)
+            path.append(next_node.id)
+            current_node = next_node
 
-    # If the simulation ends without reaching the sink
-    print("Transmission failed to reach the sink within the simulation steps.")
-    print(f"Failed Paths: {failed_paths}")
-    print(f"Energy Levels: {energy_log}")
-    
+        # Log the path and hops for this phase
+        phase_log["path"] = path
+        phase_log["hops"] = hops_log    
+        all_phase_logs.append(phase_log)
+
+    export_logs_to_csv(all_phase_logs)
+    plot_all_paths_with_energies(net, all_phase_logs)
+    return all_phase_logs
+
+
+def export_logs_to_csv(all_phase_logs, filename="transmission_logs.csv"):
+    with open(filename, mode='w', newline='') as csvfile:
+        fieldnames = ["phase", "hop", "node", "energy", "valid_neighbors", "path"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for phase_log in all_phase_logs:
+            phase = phase_log["phase"]
+            path_str = str(phase_log["path"])
+            for hop_num, hop in enumerate(phase_log["hops"], 1):
+                writer.writerow({
+                    "phase": phase,
+                    "hop": hop_num,
+                    "node": hop["node"],
+                    "energy": hop["energy"],
+                    "valid_neighbors": str(hop["valid_neighbors"]),
+                    "path": path_str
+                })

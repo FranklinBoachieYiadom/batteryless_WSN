@@ -1,5 +1,4 @@
 # Creates and manages the sensor network
-
 import random
 from node import SensorNode
 from config import *
