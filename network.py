@@ -12,7 +12,7 @@ class Network:
         self.update_neighbors()
 
     def create_nodes(self):
-        for i in range(NUM_NODES):
+        for i in range(1,NUM_NODES + 1):
             x = random.uniform(0, FIELD_SIZE[0])
             y = random.uniform(0, FIELD_SIZE[1])
             node = SensorNode(i, x, y)

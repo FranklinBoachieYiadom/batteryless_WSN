@@ -2,39 +2,8 @@
 # Main logic for running the simulation
 import random
 from config import *
-from utils import plot_energy_levels, plot_network, plot_network_with_path
+from utils import  plot_network_with_path
 from network import Network
-
-# def run_simulation():
-#     net = Network()
-#     energy_log = {n.id: [] for n in net.nodes}
-
-#     for step in range(SIMULATION_STEPS):
-#         for node in net.nodes:
-#             node.harvest_energy()
-
-#         for node in net.nodes:
-#             if node.can_transmit():
-#                 # Select neighbors that are closer to the sink and have enough energy
-#                 valid_neighbors = [
-#                     n for n in node.neighbors
-#                     if n.energy >= ENERGY_THRESHOLD and n.distance_to(net.sink) < node.distance_to(net.sink)
-#                 ]
-#                 if valid_neighbors:
-#                     best = sorted(valid_neighbors, key=lambda n: n.energy, reverse=True)[0]
-#                     node.transmit(best)
-#                 else:
-#                     node.retry_count += 1
-#                     node.wait_time += 1
-
-#             energy_log[node.id].append(node.energy)
-
-#     plot_energy_levels(energy_log, net.nodes)
-#     plot_network(net)
-#     print_results(net)
-
-
-
 
 def run_single_transmission():
     """
@@ -68,8 +37,13 @@ def run_single_transmission():
             ]
             print(f"Valid neighbors for Node {start_node.id}: {[n.id for n in valid_neighbors]}")
             if valid_neighbors:
-                # Choose the best neighbor (highest energy)
-                best = sorted(valid_neighbors, key=lambda n: n.energy, reverse=True)[0]
+                # If the sink is a valid neighbor, transmit directly to the sink
+                sink_neighbor = next((n for n in valid_neighbors if n == net.sink), None)
+                if sink_neighbor:
+                    best = net.sink
+                else:
+                    # Otherwise, choose the neighbor with the highest energy
+                    best = sorted(valid_neighbors, key=lambda n: n.energy, reverse=True)[0]
                 start_node.transmit(best)
                 transmission_path.append(start_node.id)  # Log the current node in the path
 
@@ -111,16 +85,3 @@ def run_single_transmission():
     print(f"Failed Paths: {failed_paths}")
     print(f"Energy Levels: {energy_log}")
     
-
-def print_results(net):
-    total_sent = sum(n.total_transmissions for n in net.nodes)
-    successful = sum(n.successful_transmissions for n in net.nodes)
-    retries = sum(n.retry_count for n in net.nodes)
-    avg_wait = sum(n.wait_time for n in net.nodes) / len(net.nodes)
-    pdr = (successful / total_sent * 100) if total_sent > 0 else 0
-
-    print(f"Total Transmissions: {total_sent}")
-    print(f"Successful Transmissions: {successful}")
-    print(f"Packet Delivery Ratio (PDR): {pdr:.2f}%")
-    print(f"Total Retries: {retries}")
-    print(f"Average Wait Time: {avg_wait:.2f} steps")
