@@ -32,12 +32,24 @@ def plot_all_paths_with_energies(net, all_phase_logs):
             ys.append(node.y)
         plt.plot(xs, ys, color=colors(idx), linewidth=2, label=f"Phase {phase_log['phase']}", zorder=1)
 
-    plt.title("All Transmission Paths with Node Energies")
+    # Plot attacker positions for each phase as a star
+    for idx, phase_log in enumerate(all_phase_logs):
+        attacker_id = phase_log.get("attacker_position", None)
+        if attacker_id is not None:
+            if attacker_id == 0:
+                attacker_node = net.sink
+            else:
+                attacker_node = next(n for n in net.nodes if n.id == attacker_id)
+            plt.scatter(attacker_node.x, attacker_node.y, marker='*', s=200,
+                        c='gold', edgecolors='black', zorder=10,
+                        label=f"Attacker Phase {phase_log['phase']}" if idx == 0 else "")
+
+    plt.title("All Transmission Paths with Attacker Progress")
     plt.xlabel("X Coordinate")
     plt.ylabel("Y Coordinate")
-    plt.legend()
+    # plt.legend()
     plt.grid(True)
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.show()
 
 
