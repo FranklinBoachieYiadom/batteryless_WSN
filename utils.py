@@ -6,7 +6,7 @@ def plot_all_paths_with_energies(net, all_phase_logs):
 
     # Plot all nodes with their energies as text
     for node in net.nodes:
-        plt.scatter(node.x, node.y, c='blue', s=60, zorder=2)
+        plt.scatter(node.x, node.y, c='gray', s=40, zorder=2)
         plt.text(node.x + 1, node.y + 1, f"{node.id}", fontsize=7, color='black', zorder=3)
 
     # Plot the sink node in red
@@ -30,7 +30,7 @@ def plot_all_paths_with_energies(net, all_phase_logs):
                 node = next(n for n in net.nodes if n.id == node_id)
             xs.append(node.x)
             ys.append(node.y)
-        plt.plot(xs, ys, color=colors(idx), linewidth=2, label=f"Phase {phase_log['phase']}", zorder=1)
+        plt.plot(xs, ys, color=colors(idx), linewidth=1, label=f"Phase {phase_log['phase']}", zorder=1)
 
     # Plot attacker positions for each phase as a star
     for idx, phase_log in enumerate(all_phase_logs):
@@ -40,8 +40,8 @@ def plot_all_paths_with_energies(net, all_phase_logs):
                 attacker_node = net.sink
             else:
                 attacker_node = next(n for n in net.nodes if n.id == attacker_id)
-            plt.scatter(attacker_node.x, attacker_node.y, marker='*', s=200,
-                        c='gold', edgecolors='black', zorder=10,
+            plt.scatter(attacker_node.x, attacker_node.y, marker='*', s=400,
+                        c='red', edgecolors='black', zorder=10,
                         label=f"Attacker Phase {phase_log['phase']}" if idx == 0 else "")
 
     plt.title("All Transmission Paths with Attacker Progress")
