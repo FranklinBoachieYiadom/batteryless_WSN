@@ -1,5 +1,4 @@
 # Configuration parameters for the simulation
-
 NUM_NODES = 500
 FIELD_SIZE = (200, 200) 
 COMM_RANGE = 20        

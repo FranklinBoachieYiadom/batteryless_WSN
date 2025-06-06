@@ -8,6 +8,7 @@ class SensorNode:
         self.id = node_id
         self.x = x
         self.y = y
+        
         # Initial energy is random unless specified
         self.energy = random.uniform(0.5, 2.0) if energy is None else energy
         self.neighbors = []
