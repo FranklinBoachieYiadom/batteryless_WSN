@@ -11,16 +11,11 @@ class Network:
         self.update_neighbors()
 
     def create_nodes(self, positions_seed):
-        # Fix positions using the seed
         rnd = random.Random(positions_seed)
-        positions = []
         for i in range(1, NUM_NODES + 1):
             x = rnd.uniform(0, FIELD_SIZE[0])
             y = rnd.uniform(0, FIELD_SIZE[1])
-            positions.append((i, x, y))
-        # Now assign random initial energies (unseeded)
-        for i, x, y in positions:
-            node = SensorNode(i, x, y)  # SensorNode will assign random energy
+            node = SensorNode(i, x, y)  # SensorNode will assign random energy using global random
             self.nodes.append(node)
 
     def update_neighbors(self):

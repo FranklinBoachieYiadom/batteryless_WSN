@@ -7,7 +7,6 @@ from utils import plot_all_paths_with_energies
 from network import Network
 
 
-
 def generate_fixed_network(positions_seed=42):
     net = Network(positions_seed=positions_seed)
     return net
@@ -18,7 +17,8 @@ def get_farthest_node(net):
     return farthest_node
 
 def run_multi_phase_transmissions(seed=42, visualize=True):
-    net = generate_fixed_network(seed)
+    net = generate_fixed_network(positions_seed=42)
+    random.seed(seed)  # random energies, different each trial
     start_node = get_farthest_node(net)    
     print(f"Selected farthest node: {start_node.id}")
 
@@ -27,7 +27,7 @@ def run_multi_phase_transmissions(seed=42, visualize=True):
     attacker_path = [attacker_pos]
     phase = 1
 
-    while True:
+    while phase <= MAX_PHASES:
         print(f"\n--- Phase {phase} ---")
         # Harvest energy for all nodes before each phase
         for node in net.nodes:
@@ -52,10 +52,7 @@ def run_multi_phase_transmissions(seed=42, visualize=True):
         hops_log = []
 
         while current_node != net.sink:
-            # valid_neighbors = [
-            #     n for n in current_node.neighbors
-            #     if n.energy >= ENERGY_THRESHOLD and n.distance_to(net.sink) < current_node.distance_to(net.sink)
-            # ]
+           
             valid_neighbors = [
                 n for n in current_node.neighbors
                 if (
@@ -108,17 +105,15 @@ def run_multi_phase_transmissions(seed=42, visualize=True):
         all_phase_logs.append(phase_log)
         phase += 1
 
-    
+    else:
+        print(f"Simulation stopped after {MAX_PHASES} phases without attacker capturing the source.")
+
     export_logs_to_csv(all_phase_logs)
     if visualize:
         plot_all_paths_with_energies(net, all_phase_logs)
     print(f"Total phases until attacker captured source: {phase}")
     return all_phase_logs
 
-    # export_logs_to_csv(all_phase_logs)
-    # plot_all_paths_with_energies(net, all_phase_logs)
-    # print(f"Total phases until attacker captured source: {phase}")
-    # return all_phase_logs
 
 def export_logs_to_csv(all_phase_logs, filename="transmission_logs.csv"):
     with open(filename, mode='w', newline='') as csvfile:
@@ -147,7 +142,7 @@ def export_logs_to_csv(all_phase_logs, filename="transmission_logs.csv"):
                     "attacker_captured_source": attacker_captured
                 })
 
-def average_capture_phases(num_trials=5, seed_start=1000, visualize_last=True):
+def average_capture_phases(num_trials=SIMULATION_STEPS, seed_start=1000, visualize_last=True):
     """
     Runs the simulation multiple times and computes the average number of phases
     it takes for the attacker to capture the source node.
@@ -164,13 +159,18 @@ def average_capture_phases(num_trials=5, seed_start=1000, visualize_last=True):
     print(f"\nAverage number of phases for attacker to capture source: {avg:.2f} ± {std:.2f} (std)")
     print(f"All phase counts: {phase_counts}")
 
-    # Plot histogram
-    plt.figure()
-    plt.hist(phase_counts, bins=20, color='skyblue', edgecolor='black')
-    plt.title("Histogram of Phases Until Attacker Captures Source")
-    plt.xlabel("Number of Phases")
-    plt.ylabel("Frequency")
-    plt.grid(True)
+
+    # Plot bar chart: x=trial, y=phases, color by trial
+    plt.figure(figsize=(10, 5))
+    x = np.arange(1, len(phase_counts) + 1)
+    y = phase_counts
+    colors = plt.cm.tab20(np.linspace(0, 1, len(phase_counts)))
+    plt.bar(x, y, color=colors)
+    plt.xlabel("Number of Simulations")
+    plt.ylabel("Phases Until Attacker Captures Source")
+    plt.title("Phases Until Attacker Captures Source (Each Trial)")
+    plt.xticks(x)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
     plt.show()
 
